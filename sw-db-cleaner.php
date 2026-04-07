@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Čištění databáze
  * Description: Bezpečné čištění WordPress databáze s logy.
- * Version: 1.0
+ * Version: 1.1
  * Author: Smart Websites
  * Author URI: https://smart-websites.cz
  * Update URI: https://github.com/paveltravnicek/sw-db-cleaner/
