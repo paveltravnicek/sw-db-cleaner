@@ -13,6 +13,19 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+require __DIR__ . '/plugin-update-checker/plugin-update-checker.php';
+
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$swUpdateChecker = PucFactory::buildUpdateChecker(
+	'https://github.com/paveltravnicek/sw-db-cleaner/',
+	__FILE__,
+	'sw-dbcleaner'
+);
+
+$swUpdateChecker->setBranch('main');
+$swUpdateChecker->getVcsApi()->enableReleaseAssets('/\.zip$/i');
+
 final class SW_DB_Cleaner {
     const VERSION = '1.0';
     const OPTION_SETTINGS = 'swdc_settings';
