@@ -20,7 +20,7 @@ use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
 $swUpdateChecker = PucFactory::buildUpdateChecker(
 	'https://github.com/paveltravnicek/sw-db-cleaner/',
 	__FILE__,
-	'sw-dbcleaner'
+	'sw-db-cleaner'
 );
 
 $swUpdateChecker->setBranch('main');
