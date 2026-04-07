@@ -5,6 +5,7 @@
  * Version: 1.0
  * Author: Smart Websites
  * Author URI: https://smart-websites.cz
+ * Update URI: https://github.com/paveltravnicek/sw-db-cleaner/
  * Text Domain: sw-db-cleaner
  */
 
