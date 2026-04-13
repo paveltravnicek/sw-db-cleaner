@@ -2,11 +2,14 @@
 /**
  * Plugin Name: Čištění databáze
  * Description: Bezpečné čištění WordPress databáze s logy.
- * Version: 1.1
+ * Version: 1.0
  * Author: Smart Websites
  * Author URI: https://smart-websites.cz
  * Update URI: https://github.com/paveltravnicek/sw-db-cleaner/
  * Text Domain: sw-db-cleaner
+ * SW Plugin: yes
+ * SW Service Type: passive
+ * SW License Group: both
  */
 
 if (!defined('ABSPATH')) {
@@ -28,6 +31,10 @@ $swUpdateChecker->getVcsApi()->enableReleaseAssets('/\.zip$/i');
 
 final class SW_DB_Cleaner {
     const VERSION = '1.0';
+    const LICENSE_OPTION = 'swdc_license';
+    const LICENSE_CRON_HOOK = 'swdc_license_daily_check';
+    const HUB_BASE = 'https://smart-websites.cz';
+    const PLUGIN_SLUG = 'sw-db-cleaner';
     const OPTION_SETTINGS = 'swdc_settings';
     const OPTION_LAST_RUN = 'swdc_last_run';
     const OPTION_LOGS = 'swdc_logs';
@@ -54,6 +61,15 @@ final class SW_DB_Cleaner {
         add_filter('cron_schedules', [$this, 'register_cron_schedules']);
         add_action(self::CRON_HOOK, [$this, 'run_scheduled_cleanup']);
         add_action(self::CRON_HOOK_LOG_PURGE, [$this, 'purge_old_logs']);
+        add_action(self::LICENSE_CRON_HOOK, [$this, 'cron_refresh_plugin_license']);
+
+        if (is_admin()) {
+            add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'add_plugin_action_links']);
+            add_action('admin_post_swdc_verify_license', [$this, 'handle_verify_license']);
+            add_action('admin_post_swdc_remove_license', [$this, 'handle_remove_license']);
+            add_action('admin_init', [$this, 'maybe_refresh_plugin_license']);
+            add_action('admin_init', [$this, 'block_direct_deactivate']);
+        }
     }
 
     public static function activate() {
@@ -65,11 +81,95 @@ final class SW_DB_Cleaner {
             add_option(self::OPTION_LOGS, []);
         }
         $instance->schedule_events();
+        if (!wp_next_scheduled(self::LICENSE_CRON_HOOK)) {
+            wp_schedule_event(time() + 3 * HOUR_IN_SECONDS, 'twicedaily', self::LICENSE_CRON_HOOK);
+        }
     }
 
     public static function deactivate() {
         wp_clear_scheduled_hook(self::CRON_HOOK);
         wp_clear_scheduled_hook(self::CRON_HOOK_LOG_PURGE);
+        wp_clear_scheduled_hook(self::LICENSE_CRON_HOOK);
+    }
+
+
+    public function cron_refresh_plugin_license() {
+        $this->refresh_plugin_license('cron');
+    }
+
+    private function default_license_state(): array {
+        return [
+            'key' => '',
+            'status' => 'missing',
+            'type' => '',
+            'valid_to' => '',
+            'domain' => '',
+            'message' => '',
+            'last_check' => 0,
+            'last_success' => 0,
+        ];
+    }
+
+    private function get_license_state(): array {
+        $state = get_option(self::LICENSE_OPTION, []);
+        if (!is_array($state)) {
+            $state = [];
+        }
+        return wp_parse_args($state, $this->default_license_state());
+    }
+
+    private function update_license_state(array $data): void {
+        $current = $this->get_license_state();
+        $new = array_merge($current, $data);
+        $new['key'] = sanitize_text_field((string) ($new['key'] ?? ''));
+        $new['status'] = sanitize_key((string) ($new['status'] ?? 'missing'));
+        $new['type'] = sanitize_key((string) ($new['type'] ?? ''));
+        $new['valid_to'] = sanitize_text_field((string) ($new['valid_to'] ?? ''));
+        $new['domain'] = sanitize_text_field((string) ($new['domain'] ?? ''));
+        $new['message'] = sanitize_text_field((string) ($new['message'] ?? ''));
+        $new['last_check'] = (int) ($new['last_check'] ?? 0);
+        $new['last_success'] = (int) ($new['last_success'] ?? 0);
+        update_option(self::LICENSE_OPTION, $new, false);
+    }
+
+    private function get_management_context(): array {
+        $guard_present = function_exists('sw_guard_get_service_state');
+        $management_status = $guard_present ? (string) get_option('swg_management_status', 'NONE') : 'NONE';
+        $service_state = $guard_present ? (string) sw_guard_get_service_state(self::PLUGIN_SLUG) : 'off';
+        $guard_last_success = $guard_present ? (int) get_option('swg_last_success_ts', 0) : 0;
+        $connected_recently = $guard_last_success > 0 && (time() - $guard_last_success) <= (8 * DAY_IN_SECONDS);
+
+        return [
+            'guard_present' => $guard_present,
+            'management_status' => $management_status,
+            'service_state' => in_array($service_state, ['active', 'passive', 'off'], true) ? $service_state : 'off',
+            'guard_last_success' => $guard_last_success,
+            'connected_recently' => $connected_recently,
+            'is_active' => $guard_present && $connected_recently && $management_status === 'ACTIVE' && $service_state === 'active',
+        ];
+    }
+
+    private function has_active_standalone_license(): bool {
+        $license = $this->get_license_state();
+        return $license['key'] !== '' && $license['status'] === 'active' && $license['type'] === 'plugin_single';
+    }
+
+    private function plugin_is_operational(): bool {
+        $management = $this->get_management_context();
+        if ($management['is_active']) {
+            return true;
+        }
+        return $this->has_active_standalone_license();
+    }
+
+    public function add_plugin_action_links($links) {
+        $url = admin_url('tools.php?page=' . self::MENU_SLUG);
+        array_unshift($links, '<a href="' . esc_url($url) . '">' . esc_html__('Nastavení', 'sw-db-cleaner') . '</a>');
+        $management = $this->get_management_context();
+        if ($management['is_active']) {
+            unset($links['deactivate']);
+        }
+        return $links;
     }
 
     public function register_cron_schedules($schedules) {
@@ -129,14 +229,14 @@ final class SW_DB_Cleaner {
             'swdc-admin',
             plugin_dir_url(__FILE__) . 'assets/admin.css',
             [],
-            self::VERSION
+            filemtime(plugin_dir_path(__FILE__) . 'assets/admin.css')
         );
 
         wp_enqueue_script(
             'swdc-admin',
             plugin_dir_url(__FILE__) . 'assets/admin.js',
             [],
-            self::VERSION,
+            filemtime(plugin_dir_path(__FILE__) . 'assets/admin.js'),
             true
         );
 
@@ -152,6 +252,11 @@ final class SW_DB_Cleaner {
 
         if (!isset($_GET['page']) || $_GET['page'] !== self::MENU_SLUG) {
             return;
+        }
+
+        if (!$this->plugin_is_operational() && (isset($_POST['swdc_save_settings']) || isset($_POST['swdc_run_cleanup']) || isset($_POST['swdc_delete_logs']))) {
+            wp_safe_redirect(add_query_arg('swdc_notice', 'license-invalid', menu_page_url(self::MENU_SLUG, false)));
+            exit;
         }
 
         if (isset($_POST['swdc_save_settings'])) {
@@ -205,6 +310,7 @@ final class SW_DB_Cleaner {
 
         wp_clear_scheduled_hook(self::CRON_HOOK);
         wp_clear_scheduled_hook(self::CRON_HOOK_LOG_PURGE);
+        wp_clear_scheduled_hook(self::LICENSE_CRON_HOOK);
 
         if (!wp_next_scheduled(self::CRON_HOOK_LOG_PURGE)) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', self::CRON_HOOK_LOG_PURGE);
@@ -216,6 +322,9 @@ final class SW_DB_Cleaner {
     }
 
     public function run_scheduled_cleanup() {
+        if (!$this->plugin_is_operational()) {
+            return;
+        }
         $this->perform_cleanup('scheduled');
     }
 
@@ -258,6 +367,16 @@ final class SW_DB_Cleaner {
     }
 
     private function perform_cleanup($trigger = 'manual') {
+        if (!$this->plugin_is_operational()) {
+            return [
+                'timestamp' => time(),
+                'trigger' => $trigger,
+                'size_before_mb' => 0,
+                'size_after_mb' => 0,
+                'saved_mb' => 0,
+                'counts' => [],
+            ];
+        }
         global $wpdb;
 
         $settings = $this->get_settings();
@@ -437,6 +556,213 @@ final class SW_DB_Cleaner {
         return !empty($data['Version']) ? $data['Version'] : self::VERSION;
     }
 
+
+    private function get_license_panel_data(array $license, array $management, bool $is_operational): array {
+        $format_dt = static function(int $ts): string {
+            return $ts > 0 ? wp_date('j. n. Y H:i', $ts) : '—';
+        };
+        $format_date = static function(string $ymd): string {
+            if ($ymd === '') {
+                return '—';
+            }
+            $ts = strtotime($ymd . ' 12:00:00');
+            return $ts ? wp_date('j. n. Y', $ts) : $ymd;
+        };
+
+        $base = [
+            'badge_class' => 'inactive',
+            'badge_label' => 'Licence chybí',
+            'mode'        => 'Samostatná licence pluginu',
+            'subline'     => '',
+            'valid_to'    => '—',
+            'domain'      => '',
+            'last_check'  => '—',
+            'message'     => '',
+        ];
+
+        if ($management['guard_present']) {
+            if ($management['is_active']) {
+                return array_merge($base, [
+                    'badge_class' => 'active',
+                    'badge_label' => 'Platná licence',
+                    'mode'        => 'Správa webu',
+                    'valid_to'    => $format_date((string) get_option('swg_managed_until', '')),
+                    'domain'      => (string) get_option('swg_licence_domain', ''),
+                    'last_check'  => $format_dt((int) $management['guard_last_success']),
+                    'message'     => 'Plugin je provozován v rámci Správy webu.',
+                ]);
+            }
+            if ($management['management_status'] !== 'NONE') {
+                return array_merge($base, [
+                    'badge_class' => 'inactive',
+                    'badge_label' => 'Licence neplatná',
+                    'mode'        => 'Správa webu',
+                    'subline'     => 'Správa webu je po expiraci nebo omezená. Čištění databáze se neprovádí.',
+                    'valid_to'    => $format_date((string) get_option('swg_managed_until', '')),
+                    'domain'      => (string) get_option('swg_licence_domain', ''),
+                    'last_check'  => $format_dt((int) $management['guard_last_success']),
+                    'message'     => 'Po expiraci lze plugin deaktivovat nebo smazat.',
+                ]);
+            }
+        }
+
+        if ($license['status'] === 'active') {
+            return array_merge($base, [
+                'badge_class' => 'active',
+                'badge_label' => 'Platná licence',
+                'mode'        => 'Samostatná licence pluginu',
+                'subline'     => $license['key'] !== '' ? 'Licenční kód: ' . $license['key'] : '',
+                'valid_to'    => $format_date((string) $license['valid_to']),
+                'domain'      => (string) $license['domain'],
+                'last_check'  => $format_dt((int) $license['last_success']),
+                'message'     => $license['message'] !== '' ? $license['message'] : 'Plugin běží přes samostatnou licenci.',
+            ]);
+        }
+
+        return array_merge($base, [
+            'badge_class' => $is_operational ? 'active' : 'inactive',
+            'badge_label' => $is_operational ? 'Platná licence' : 'Licence chybí',
+            'mode'        => 'Samostatná licence pluginu',
+            'subline'     => $license['key'] !== '' ? 'Licenční kód: ' . $license['key'] : 'Zatím nebyl uložen žádný licenční kód.',
+            'valid_to'    => $format_date((string) $license['valid_to']),
+            'domain'      => (string) $license['domain'],
+            'last_check'  => $format_dt((int) $license['last_check']),
+            'message'     => $license['message'] !== '' ? $license['message'] : 'Bez platné licence plugin přestává provádět čištění databáze.',
+        ]);
+    }
+
+    public function maybe_refresh_plugin_license() {
+        $management = $this->get_management_context();
+        if ($management['is_active']) {
+            return;
+        }
+
+        $license = $this->get_license_state();
+        if ($license['key'] === '') {
+            return;
+        }
+        if (!current_user_can('manage_options')) {
+            return;
+        }
+        if (!empty($_POST['license_key'])) {
+            return;
+        }
+        if ($license['last_check'] > 0 && (time() - (int) $license['last_check']) < (12 * HOUR_IN_SECONDS)) {
+            return;
+        }
+        $this->refresh_plugin_license('admin-auto');
+    }
+
+    private function refresh_plugin_license(string $reason = 'manual', string $override_key = ''): array {
+        $key = $override_key !== '' ? sanitize_text_field($override_key) : (string) $this->get_license_state()['key'];
+        if ($key === '') {
+            $this->update_license_state([
+                'key' => '',
+                'status' => 'missing',
+                'type' => '',
+                'valid_to' => '',
+                'domain' => '',
+                'message' => 'Licenční kód zatím není uložený.',
+                'last_check' => time(),
+            ]);
+            return ['ok' => false, 'error' => 'missing_key'];
+        }
+
+        $site_id = (string) get_option('swg_site_id', '');
+        $payload = [
+            'license_key' => $key,
+            'plugin_slug' => self::PLUGIN_SLUG,
+            'site_id' => $site_id,
+            'site_url' => home_url('/'),
+            'reason' => $reason,
+            'plugin_version' => self::VERSION,
+        ];
+
+        $res = wp_remote_post(rtrim(self::HUB_BASE, '/') . '/wp-json/swlic/v2/plugin-license', [
+            'timeout' => 20,
+            'headers' => ['Content-Type' => 'application/json'],
+            'body' => wp_json_encode($payload, JSON_UNESCAPED_SLASHES),
+        ]);
+
+        if (is_wp_error($res)) {
+            $this->update_license_state([
+                'key' => $key,
+                'status' => 'error',
+                'message' => $res->get_error_message(),
+                'last_check' => time(),
+            ]);
+            return ['ok' => false, 'error' => $res->get_error_message()];
+        }
+
+        $code = (int) wp_remote_retrieve_response_code($res);
+        $body = (string) wp_remote_retrieve_body($res);
+        $data = json_decode($body, true);
+        if ($code < 200 || $code >= 300 || !is_array($data)) {
+            $api_message = 'Nepodařilo se ověřit licenci.';
+            if (is_array($data) && !empty($data['message'])) {
+                $api_message = sanitize_text_field((string) $data['message']);
+            } elseif ($code > 0) {
+                $api_message = 'Hub vrátil neočekávanou odpověď (HTTP ' . $code . ').';
+            }
+
+            $this->update_license_state([
+                'key' => $key,
+                'status' => 'error',
+                'message' => $api_message,
+                'last_check' => time(),
+            ]);
+            return ['ok' => false, 'error' => 'bad_response', 'message' => $api_message, 'http_code' => $code];
+        }
+
+        $this->update_license_state([
+            'key' => $key,
+            'status' => sanitize_key((string) ($data['status'] ?? 'missing')),
+            'type' => sanitize_key((string) ($data['licence_type'] ?? 'plugin_single')),
+            'valid_to' => sanitize_text_field((string) ($data['valid_to'] ?? '')),
+            'domain' => sanitize_text_field((string) ($data['assigned_domain'] ?? '')),
+            'message' => sanitize_text_field((string) ($data['message'] ?? '')),
+            'last_check' => time(),
+            'last_success' => !empty($data['ok']) ? time() : 0,
+        ]);
+
+        return $data;
+    }
+
+    public function handle_verify_license() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Zakázáno.', 'Zakázáno', ['response' => 403]);
+        }
+        check_admin_referer('swdc_verify_license');
+        $key = sanitize_text_field((string) ($_POST['license_key'] ?? ''));
+        $result = $this->refresh_plugin_license('manual', $key);
+        $message = !empty($result['message']) ? (string) $result['message'] : (!empty($result['ok']) ? 'Licence byla ověřena.' : 'Licenci se nepodařilo ověřit.');
+        wp_safe_redirect(add_query_arg('swdc_license_message', rawurlencode($message), admin_url('tools.php?page=' . self::MENU_SLUG)));
+        exit;
+    }
+
+    public function handle_remove_license() {
+        if (!current_user_can('manage_options')) {
+            wp_die('Zakázáno.', 'Zakázáno', ['response' => 403]);
+        }
+        check_admin_referer('swdc_remove_license');
+        delete_option(self::LICENSE_OPTION);
+        wp_safe_redirect(add_query_arg('swdc_license_message', rawurlencode('Licenční kód byl odebrán.'), admin_url('tools.php?page=' . self::MENU_SLUG)));
+        exit;
+    }
+
+    public function block_direct_deactivate() {
+        $management = $this->get_management_context();
+        if (!$management['is_active']) {
+            return;
+        }
+
+        $action = isset($_GET['action']) ? sanitize_key((string) $_GET['action']) : '';
+        $plugin = isset($_GET['plugin']) ? sanitize_text_field((string) $_GET['plugin']) : '';
+        if ($action === 'deactivate' && $plugin === plugin_basename(__FILE__)) {
+            wp_die('Tento plugin nelze deaktivovat při aktivní správě webu.', 'Chráněný plugin', ['response' => 403]);
+        }
+    }
+
     public function render_admin_page() {
         if (!current_user_can('manage_options')) {
             wp_die(__('Nemáte oprávnění.', 'sw-db-cleaner'));
@@ -446,6 +772,11 @@ final class SW_DB_Cleaner {
         $last_run = $this->get_last_run();
         $logs = $this->get_logs();
         $plugin_version = $this->get_plugin_version();
+        $license = $this->get_license_state();
+        $management = $this->get_management_context();
+        $is_operational = $this->plugin_is_operational();
+        $can_edit_settings = $is_operational;
+        $status_payload = $this->get_license_panel_data($license, $management, $is_operational);
         $admin_result = get_transient('swdc_admin_result');
         if ($admin_result) {
             delete_transient('swdc_admin_result');
@@ -467,6 +798,9 @@ final class SW_DB_Cleaner {
             </section>
 
             <div class="swdc-page-notices">
+            <?php if (!empty($_GET['swdc_license_message'])) : ?>
+                <div class="notice notice-success"><p><?php echo esc_html(sanitize_text_field((string) $_GET['swdc_license_message'])); ?></p></div>
+            <?php endif; ?>
             <?php if (isset($_GET['swdc_notice'])) : ?>
                 <div class="notice notice-success is-dismissible"><p>
                     <?php
@@ -477,11 +811,65 @@ final class SW_DB_Cleaner {
                         echo esc_html__('Čištění databáze bylo spuštěno.', 'sw-db-cleaner');
                     } elseif ($notice === 'logs-deleted') {
                         echo esc_html__('Logy byly smazány.', 'sw-db-cleaner');
+                    } elseif ($notice === 'license-invalid') {
+                        echo esc_html__('Plugin momentálně nemá platnou licenci. Akce nebyla provedena.', 'sw-db-cleaner');
                     }
                     ?>
                 </p></div>
             <?php endif; ?>
             </div>
+
+            <div class="swdc-card swdc-card--licence">
+                <div class="swdc-card-head">
+                    <div>
+                        <h2><?php echo esc_html__('Licence pluginu', 'sw-db-cleaner'); ?></h2>
+                        <p class="swdc-intro"><?php echo esc_html__('Plugin může běžet buď v rámci platné správy webu, nebo přes samostatnou licenci.', 'sw-db-cleaner'); ?></p>
+                    </div>
+                    <span class="swdc-licence-badge swdc-licence-badge--<?php echo esc_attr($status_payload['badge_class']); ?>"><?php echo esc_html($status_payload['badge_label']); ?></span>
+                </div>
+
+                <div class="swdc-licence-grid">
+                    <div class="swdc-licence-item">
+                        <span class="swdc-licence-label"><?php echo esc_html__('Režim', 'sw-db-cleaner'); ?></span>
+                        <strong><?php echo esc_html($status_payload['mode']); ?></strong>
+                        <?php if ($status_payload['subline']) : ?><span><?php echo esc_html($status_payload['subline']); ?></span><?php endif; ?>
+                    </div>
+                    <div class="swdc-licence-item">
+                        <span class="swdc-licence-label"><?php echo esc_html__('Platnost do', 'sw-db-cleaner'); ?></span>
+                        <strong><?php echo esc_html($status_payload['valid_to']); ?></strong>
+                        <?php if ($status_payload['domain']) : ?><span><?php echo esc_html($status_payload['domain']); ?></span><?php endif; ?>
+                    </div>
+                    <div class="swdc-licence-item">
+                        <span class="swdc-licence-label"><?php echo esc_html__('Poslední ověření', 'sw-db-cleaner'); ?></span>
+                        <strong><?php echo esc_html($status_payload['last_check']); ?></strong>
+                        <?php if ($status_payload['message']) : ?><span><?php echo esc_html($status_payload['message']); ?></span><?php endif; ?>
+                    </div>
+                </div>
+
+                <?php if (!$management['is_active']) : ?>
+                    <div class="swdc-license-form-wrap">
+                        <form method="post" action="<?php echo esc_url(admin_url('admin-post.php')); ?>" class="swdc-license-form">
+                            <?php wp_nonce_field('swdc_verify_license'); ?>
+                            <input type="hidden" name="action" value="swdc_verify_license">
+                            <label for="swdc_license_key"><strong><?php echo esc_html__('Licenční kód pluginu', 'sw-db-cleaner'); ?></strong></label>
+                            <input type="text" id="swdc_license_key" name="license_key" value="<?php echo esc_attr($license['key']); ?>" class="regular-text" placeholder="SWLIC-..." />
+                            <p class="description"><?php echo esc_html__('Použijte pouze pro samostatnou licenci pluginu. Pokud máte Správu webu, kód vyplňovat nemusíte.', 'sw-db-cleaner'); ?></p>
+                            <div class="swdc-license-actions">
+                                <button type="submit" class="button button-primary"><?php echo esc_html__('Ověřit a uložit licenci', 'sw-db-cleaner'); ?></button>
+                                <?php if ($license['key'] !== '') : ?>
+                                    <a href="<?php echo esc_url(wp_nonce_url(admin_url('admin-post.php?action=swdc_remove_license'), 'swdc_remove_license')); ?>" class="button button-secondary"><?php echo esc_html__('Odebrat licenční kód', 'sw-db-cleaner'); ?></a>
+                                <?php endif; ?>
+                            </div>
+                        </form>
+                    </div>
+                <?php else : ?>
+                    <div class="swdc-note"><?php echo esc_html__('Plugin je provozován v rámci Správy webu. Samostatný licenční kód není potřeba.', 'sw-db-cleaner'); ?></div>
+                <?php endif; ?>
+            </div>
+
+            <?php if (!$can_edit_settings) : ?>
+                <div class="notice notice-warning"><p><?php echo esc_html__('Plugin momentálně nemá platnou licenci. Nastavení zůstává pouze pro čtení a čištění databáze se neprovádí.', 'sw-db-cleaner'); ?></p></div>
+            <?php endif; ?>
 
             <div class="swdc-grid">
                 <section class="swdc-card swdc-card-highlight">
@@ -503,7 +891,7 @@ final class SW_DB_Cleaner {
 
                     <form method="post" class="swdc-run-form">
                         <?php wp_nonce_field(self::NONCE_ACTION_RUN); ?>
-                        <button type="submit" name="swdc_run_cleanup" class="button button-primary button-hero">Spustit čištění databáze nyní</button>
+                        <button type="submit" name="swdc_run_cleanup" class="button button-primary button-hero" <?php disabled(!$can_edit_settings); ?>>Spustit čištění databáze nyní</button>
                     </form>
 
                     <?php if (!empty($admin_result)) : ?>
@@ -533,7 +921,8 @@ final class SW_DB_Cleaner {
             <div class="swdc-grid swdc-grid-main">
                 <section class="swdc-card">
                     <h2>Nastavení čištění</h2>
-                    <form method="post" class="swdc-settings-form">
+                    <form method="post" class="swdc-settings-form <?php echo $can_edit_settings ? '' : 'is-readonly'; ?>">
+                        <fieldset <?php disabled(!$can_edit_settings); ?>>
                         <?php wp_nonce_field(self::NONCE_ACTION_SAVE); ?>
 
                         <div class="swdc-switches">
@@ -564,7 +953,8 @@ final class SW_DB_Cleaner {
                             <label><input type="checkbox" name="optimize_tables" value="1" <?php checked($settings['optimize_tables'], 1); ?>> Optimalizovat WP tabulky</label>
                         </div>
 
-                        <p><button type="submit" name="swdc_save_settings" class="button button-primary">Uložit nastavení</button></p>
+                        <p><button type="submit" name="swdc_save_settings" class="button button-primary" <?php disabled(!$can_edit_settings); ?>>Uložit nastavení</button></p>
+                        </fieldset>
                     </form>
                 </section>
 
@@ -573,7 +963,7 @@ final class SW_DB_Cleaner {
                         <h2>Logy čištění</h2>
                         <form method="post" onsubmit="return window.confirm(swdcAdmin.confirmDeleteLogs);">
                             <?php wp_nonce_field('swdc_delete_logs'); ?>
-                            <button type="submit" name="swdc_delete_logs" class="button button-secondary">Smazat všechny logy</button>
+                            <button type="submit" name="swdc_delete_logs" class="button button-secondary" <?php disabled(!$can_edit_settings); ?>>Smazat všechny logy</button>
                         </form>
                     </div>
 
@@ -618,3 +1008,16 @@ final class SW_DB_Cleaner {
 SW_DB_Cleaner::instance();
 register_activation_hook(__FILE__, ['SW_DB_Cleaner', 'activate']);
 register_deactivation_hook(__FILE__, ['SW_DB_Cleaner', 'deactivate']);
+
+add_filter('plugin_action_links', function($actions, $plugin_file) {
+    if ($plugin_file !== plugin_basename(__FILE__)) {
+        return $actions;
+    }
+    if (function_exists('sw_guard_get_service_state') && (string) get_option('swg_management_status', 'NONE') === 'ACTIVE') {
+        $service_state = (string) sw_guard_get_service_state('sw-db-cleaner');
+        if ($service_state === 'active') {
+            unset($actions['deactivate']);
+        }
+    }
+    return $actions;
+}, 20, 2);
