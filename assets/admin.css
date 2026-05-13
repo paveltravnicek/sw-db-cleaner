@@ -1,53 +1,929 @@
-.swdc-wrap{max-width:none;margin:20px 20px 0 2px}
-.swdc-hero{position:relative;margin:0 0 24px;padding:38px 42px;background:linear-gradient(90deg,#04478A 0%,#0096E2 100%);border-radius:34px;color:#fff;overflow:hidden;box-shadow:0 10px 30px rgba(4,71,138,.14)}
-.swdc-hero-inner{display:flex;justify-content:space-between;align-items:flex-start;gap:28px}
-.swdc-hero-brand{display:inline-flex;align-items:center;padding:12px 18px;border-radius:999px;background:rgba(255,255,255,.18);font-size:14px;line-height:1;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
-.swdc-hero h1{margin:26px 0 14px;font-size:58px;line-height:1.08;font-weight:400;color:#fff}
-.swdc-hero p{max-width:840px;margin:0;color:#fff;font-size:.9rem;line-height:1.2}
-.swdc-version-card{min-width:220px;max-width:220px;padding:20px 28px;border-radius:28px;background:rgba(255,255,255,.2);backdrop-filter:blur(2px);box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
-.swdc-version-card strong{display:block;font-size:32px;line-height:1.05;font-weight:700;color:#fff}
-.swdc-version-card span{display:block;margin-top:4px;font-size:14px;color:#fff}
-.notice{background:#111111;border:1px solid #111111;padding:15px;border-radius:15px;color:#fff;box-shadow:none}
-.notice p,.notice p a{color:#fff}
-.notice.notice-success{border-left:4px solid #00a32a}
-.notice.notice-error,.notice.error{border-left:4px solid #d63638}
-.notice.notice-warning{border-left:4px solid #dba617}
-.notice.notice-info,.notice.updated{border-left:4px solid #72aee6}
-.swdc-page-notices{margin:0 0 22px}
-.swdc-page-notices .notice{margin:0 0 14px}
-.swdc-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
-.swdc-grid-main{align-items:start}
-.swdc-card{background:#fff;border:1px solid #d7dde3;border-radius:28px;padding:30px;box-shadow:0 8px 22px rgba(15,23,42,.05)}
-.swdc-card h2{margin-top:0;margin-bottom:14px;font-size:20px;color:#1f2328}
-.swdc-card-highlight{border-color:#d7dde3;background:#fff}
-.swdc-card-header-inline{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;flex-wrap:wrap}
-.swdc-card-header-inline form{margin:0;align-self:flex-start}
-.swdc-card-header-inline .button{margin-top:-2px}
-.swdc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:16px 0}
-.swdc-stats>div,.swdc-result-list li,.swdc-options-grid label,.swdc-switches label,.swdc-details{box-shadow:0 6px 18px rgba(15,23,42,.035)}
-.swdc-stats>div{border:1px solid #e2e4e7;border-radius:18px;padding:16px;background:#fafafa}
-.swdc-stats strong{display:block;font-size:18px;margin-bottom:4px}
-.swdc-stats span{color:#50575e;font-size:13px}
-.swdc-run-form{margin-top:18px}.swdc-settings-form .description{color:#646970}.swdc-switches,.swdc-options-grid{display:grid;gap:12px}.swdc-switches{margin-bottom:18px}.swdc-field{margin-bottom:18px}.swdc-field select{min-width:220px}.swdc-options-grid{grid-template-columns:1fr 1fr}.swdc-options-grid label,.swdc-switches label{display:flex;align-items:flex-start;gap:10px;padding:14px 16px;border:1px solid #e2e4e7;border-radius:18px;background:#fafafa}.swdc-result-list{display:grid;grid-template-columns:1fr 1fr;gap:10px 18px;margin:0;padding:0;list-style:none}.swdc-result-list li{padding:12px 14px;border:1px solid #eef0f1;border-radius:16px;background:#fcfcfc}.swdc-details{border:1px solid #d7dde3;border-radius:22px;background:#fff;margin-top:14px;overflow:hidden}.swdc-details summary{cursor:pointer;list-style:none;padding:18px 20px;font-weight:600;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}.swdc-details summary::-webkit-details-marker{display:none}.swdc-details-content{padding:0 20px 20px}.swdc-log-list{display:grid;gap:12px}.swdc-log-meta{color:#646970;font-weight:400}.button.button-hero{padding-inline:18px}.swdc-card code{font-size:.95em}
-.swdc-log-list{gap:14px}.swdc-log-list .swdc-details{margin-top:0}.swdc-accordion-item.is-open{border-color:#c3d9ec;box-shadow:0 0 0 1px rgba(34,113,177,.08),0 10px 22px rgba(15,23,42,.06)}.swdc-accordion-item summary{position:relative;padding-right:42px}.swdc-accordion-item summary::after{content:'+';position:absolute;right:18px;top:50%;transform:translateY(-50%);font-size:22px;line-height:1;color:#2271b1;font-weight:400}.swdc-accordion-item[open] summary::after{content:'–'}
-@media (max-width:1100px){.swdc-grid,.swdc-grid-main,.swdc-stats,.swdc-options-grid,.swdc-result-list{grid-template-columns:1fr}.swdc-hero h1{font-size:46px}}
-@media (max-width:782px){.swdc-wrap{margin:16px 10px 0 0}.swdc-hero{padding:26px 18px;border-radius:26px}.swdc-hero-inner{flex-direction:column}.swdc-hero h1{font-size:34px;margin:18px 0 12px}.swdc-version-card{min-width:0;max-width:none;width:100%;border-radius:22px}.swdc-card{padding:18px;border-radius:20px}.swdc-details summary{padding:14px 16px}.swdc-details-content{padding:0 16px 16px}}
-.swdc-card--licence{margin-bottom:20px}
-.swdc-card-head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;flex-wrap:wrap;margin-bottom:18px}
-.swdc-intro{margin:8px 0 0;color:#646970}
-.swdc-licence-badge{display:inline-flex;align-items:center;padding:10px 14px;border-radius:999px;font-size:13px;font-weight:700}
-.swdc-licence-badge--active{background:rgba(0,163,42,.12);color:#0a7a22}
-.swdc-licence-badge--inactive{background:rgba(214,54,56,.12);color:#b42318}
-.swdc-licence-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
-.swdc-licence-item{padding:16px 18px;border:1px solid #e2e4e7;border-radius:18px;background:#fafafa;box-shadow:0 6px 18px rgba(15,23,42,.035)}
-.swdc-licence-label{display:block;margin-bottom:6px;font-size:12px;color:#646970;text-transform:uppercase;letter-spacing:.04em}
-.swdc-licence-item strong{display:block;font-size:17px;line-height:1.3}
-.swdc-licence-item span:last-child{display:block;margin-top:6px;color:#646970}
-.swdc-license-form-wrap{margin-top:6px;padding-top:18px;border-top:1px solid #e2e4e7}
-.swdc-license-form{display:grid;gap:12px}
-.swdc-license-actions{display:flex;gap:10px;flex-wrap:wrap}
-.swdc-note{padding:14px 16px;border-radius:18px;background:#f6f7f7;border:1px solid #e2e4e7}
-.swdc-settings-form.is-readonly{opacity:.92}
-.swdc-settings-form.is-readonly .button,.swdc-settings-form.is-readonly input,.swdc-settings-form.is-readonly select{pointer-events:none}
-@media (max-width:1100px){.swdc-licence-grid{grid-template-columns:1fr}}
-@media (max-width:782px){.swdc-card-head{gap:12px}.swdc-license-actions{flex-direction:column;align-items:flex-start}}
+/* Smart Websites – DB Cleaner admin v2.0
+   Design systém shodný s SW Zalomení
+   -------------------------------------------------- */
+
+/* ─── Wrap ───────────────────────────────────────── */
+.swdc-wrap {
+	max-width: none;
+	margin: 0 20px 0 0;
+	padding: 0 0 48px;
+	box-sizing: border-box;
+}
+
+/* ─── Hero ───────────────────────────────────────── */
+.swdc-hero {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 20px;
+	padding: 32px 32px 36px;
+	background: linear-gradient(120deg, #03366e 0%, #0576b5 60%, #0096E2 100%);
+	color: #fff;
+	position: relative;
+	overflow: hidden;
+	margin-bottom: 0;
+}
+
+.swdc-hero::after {
+	content: '';
+	position: absolute;
+	right: -60px;
+	top: -60px;
+	width: 320px;
+	height: 320px;
+	border-radius: 50%;
+	background: rgba(255,255,255,0.05);
+	pointer-events: none;
+}
+
+.swdc-hero-inner {
+	display: contents;
+}
+
+.swdc-hero-inner > div:first-child {
+	flex: 1 1 400px;
+	min-width: 0;
+	position: relative;
+	z-index: 1;
+}
+
+.swdc-hero-brand {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	background: rgba(255,255,255,0.15);
+	border: 1px solid rgba(255,255,255,0.22);
+	padding: 4px 12px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	color: rgba(255,255,255,0.9);
+	margin-bottom: 14px;
+	display: inline-block;
+}
+
+.swdc-hero h1 {
+	color: #fff !important;
+	font-size: 36px;
+	font-weight: 800;
+	line-height: 1.1;
+	margin: 0 0 12px !important;
+	letter-spacing: -.02em;
+	padding: 0 !important;
+}
+
+.swdc-hero p {
+	margin: 0;
+	font-size: 14px;
+	line-height: 1.5;
+	max-width: 60ch;
+	color: rgba(255,255,255,0.78);
+}
+
+.swdc-version-card {
+	flex: 0 0 auto;
+	background: rgba(255,255,255,0.13);
+	border: 1px solid rgba(255,255,255,0.2);
+	border-radius: 14px;
+	padding: 12px 18px;
+	text-align: right;
+	min-width: 130px;
+	position: relative;
+	z-index: 1;
+	align-self: flex-start;
+}
+
+.swdc-version-card strong {
+	display: block;
+	font-size: 22px;
+	font-weight: 800;
+	color: #fff;
+	line-height: 1;
+}
+
+.swdc-version-card span {
+	display: block;
+	font-size: 11px;
+	color: rgba(255,255,255,0.65);
+	margin-top: 3px;
+	text-transform: uppercase;
+	letter-spacing: .05em;
+}
+
+.swdc-hero__content {
+	flex: 1 1 400px;
+	min-width: 0;
+	position: relative;
+	z-index: 1;
+}
+
+.swdc-hero__meta {
+	flex: 0 0 auto;
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 10px;
+	position: relative;
+	z-index: 1;
+}
+
+/* Licence status badge v hero – stejný jako Zalomení */
+.swdc-hero-status {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	border-radius: 999px;
+	padding: 5px 12px 5px 8px;
+	font-size: 12px;
+	font-weight: 700;
+	color: #fff;
+}
+
+.swdc-hero-status--active {
+	background: #16a34a;
+}
+
+.swdc-hero-status--inactive {
+	background: rgba(255,255,255,0.18);
+	border: 1px solid rgba(255,255,255,0.25);
+}
+
+.swdc-hero-status__dot {
+	width: 7px;
+	height: 7px;
+	border-radius: 50%;
+	background: #86efac;
+	flex-shrink: 0;
+}
+
+.swdc-hero-status--inactive .swdc-hero-status__dot {
+	background: rgba(255,255,255,0.5);
+}
+
+/* ─── Notices ────────────────────────────────────── */
+/* WP notices uvnitř hero (renderované před .wrap) */
+
+.swdc-wrap .notice p,
+.swdc-wrap div.updated p,
+.swdc-wrap div.error p {
+	color: #ffffff !important;
+	margin: 0 !important;
+	font-size: 13px !important;
+}
+
+.swdc-wrap .notice-success, .swdc-wrap .updated { border-left-color: #4ade80 !important; }
+.swdc-wrap .notice-warning { border-left-color: #fbbf24 !important; }
+.swdc-wrap .notice-error, .swdc-wrap .error { border-left-color: #f87171 !important; }
+.swdc-wrap .notice-info { border-left-color: #60a5fa !important; }
+
+/* Naše vlastní notices (swdc-page-notices) – světlé, pod hero */
+.swdc-page-notices {
+	padding: 16px 32px 0;
+	margin-top: 16px;
+}
+
+.swdc-page-notices:empty { display: none; }
+
+.swdc-page-notices .notice,
+.swdc-page-notices div.updated,
+.swdc-page-notices div.error {
+	background: #ffffff !important;
+	color: #1e293b !important;
+	border: 1px solid #e2e8f0 !important;
+	border-left-width: 4px !important;
+	border-radius: 12px !important;
+	box-shadow: 0 1px 4px rgba(15,23,42,0.06) !important;
+	margin: 0 0 10px !important;
+	padding: 12px 16px !important;
+}
+
+.swdc-page-notices .notice p,
+.swdc-page-notices div.updated p {
+	color: #1e293b !important;
+	margin: 0 !important;
+	font-size: 13px !important;
+}
+
+.swdc-page-notices .notice-success, .swdc-page-notices .updated { border-left-color: #16a34a !important; }
+.swdc-page-notices .notice-warning { border-left-color: #d97706 !important; }
+.swdc-page-notices .notice-error { border-left-color: #dc2626 !important; }
+
+/* ─── WP Notices – stejný přístup jako SW Zalomení ── */
+/* Všechny notices kdekoliv uvnitř .swdc-wrap */
+.swdc-wrap .notice,
+.swdc-wrap div.updated,
+.swdc-wrap div.error {
+	background: rgba(0, 0, 0, 0.18) !important;
+	color: #ffffff !important;
+	border: 1px solid rgba(255, 255, 255, 0.25) !important;
+	border-left-width: 5px !important;
+	border-radius: 12px !important;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.06) !important;
+	margin: 0 0 10px !important;
+	padding: 12px 16px !important;
+}
+
+.swdc-wrap .notice *,
+.swdc-wrap div.updated *,
+.swdc-wrap div.error * {
+	color: #ffffff !important;
+}
+
+.swdc-wrap .notice p,
+.swdc-wrap div.updated p,
+.swdc-wrap div.error p {
+	color: #ffffff !important;
+	margin: 0 !important;
+	font-size: 13px !important;
+}
+
+.swdc-wrap .notice a,
+.swdc-wrap div.updated a {
+	color: #bfdbfe !important;
+}
+
+.swdc-wrap .notice-success,
+.swdc-wrap .updated { border-left-color: #4ade80 !important; }
+
+.swdc-wrap .notice-warning { border-left-color: #fbbf24 !important; }
+
+.swdc-wrap .notice-error,
+.swdc-wrap .error { border-left-color: #f87171 !important; }
+
+.swdc-wrap .notice-info { border-left-color: #60a5fa !important; }
+
+/* ─── Hlavní obsah ───────────────────────────────── */
+.swdc-card--licence,
+.swdc-grid {
+	margin: 20px 32px 0;
+}
+
+/* ─── Licence panel ──────────────────────────────── */
+.swdc-card--licence {
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 18px;
+	overflow: hidden;
+	box-shadow: 0 1px 6px rgba(15,23,42,0.06);
+}
+
+.swdc-card-head {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 20px 22px 16px;
+	border-bottom: 1px solid #f1f5f9;
+	gap: 16px;
+}
+
+.swdc-card-head h2 {
+	font-size: 16px !important;
+	font-weight: 700 !important;
+	color: #0f172a !important;
+	margin: 0 0 3px !important;
+	padding: 0 !important;
+}
+
+.swdc-intro {
+	margin: 0 !important;
+	font-size: 12px;
+	color: #94a3b8;
+}
+
+.swdc-licence-badge {
+	flex-shrink: 0;
+	display: inline-flex;
+	align-items: center;
+	padding: 5px 14px;
+	border-radius: 999px;
+	font-size: 12px;
+	font-weight: 700;
+	white-space: nowrap;
+}
+
+.swdc-licence-badge--active { background: #dcfce7; color: #15803d; }
+.swdc-licence-badge--inactive { background: #fee2e2; color: #b91c1c; }
+
+.swdc-licence-grid {
+	display: grid;
+	grid-template-columns: repeat(3, minmax(0, 1fr));
+	border-bottom: 1px solid #f1f5f9;
+}
+
+.swdc-licence-item {
+	padding: 16px 22px;
+	border-right: 1px solid #f1f5f9;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.swdc-licence-item:last-child { border-right: none; }
+
+.swdc-licence-label {
+	font-size: 10px;
+	font-weight: 700;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	color: #94a3b8;
+}
+
+.swdc-licence-item strong {
+	font-size: 15px;
+	font-weight: 700;
+	color: #0f172a;
+}
+
+.swdc-licence-item span {
+	font-size: 12px;
+	color: #64748b;
+}
+
+.swdc-license-form-wrap {
+	padding: 18px 22px;
+	background: #fafcff;
+	border-top: 1px solid #f1f5f9;
+}
+
+.swdc-license-form {
+	display: grid;
+	gap: 8px;
+	max-width: 520px;
+}
+
+.swdc-license-form label { font-size: 13px; }
+
+.swdc-license-form input[type="text"] {
+	border-radius: 9px !important;
+	border-color: #e2e8f0 !important;
+	font-size: 13px;
+	height: 36px;
+}
+
+.swdc-license-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+	margin-top: 4px;
+}
+
+.swdc-note {
+	padding: 14px 22px;
+	font-size: 12px;
+	color: #64748b;
+	background: #fafcff;
+	border-top: 1px solid #f1f5f9;
+}
+
+/* ─── Grid ───────────────────────────────────────── */
+.swdc-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 16px;
+}
+
+/* ─── Karty ──────────────────────────────────────── */
+.swdc-card {
+	background: #fff;
+	border: 1px solid #e2e8f0;
+	border-radius: 18px;
+	padding: 22px;
+	box-shadow: 0 1px 4px rgba(15,23,42,0.05);
+}
+
+.swdc-card h2 {
+	font-size: 15px !important;
+	font-weight: 700 !important;
+	color: #0f172a !important;
+	margin: 0 0 14px !important;
+	padding: 0 !important;
+}
+
+.swdc-card p {
+	font-size: 13px;
+	color: #64748b;
+	line-height: 1.5;
+	margin: 0 0 14px;
+}
+
+.swdc-card p:last-child { margin-bottom: 0; }
+
+.swdc-card-highlight {
+	background: #f0f7ff;
+	border-color: #bfdbfe;
+}
+
+.swdc-card-highlight p {
+	font-size: 13px;
+	color: #1e40af;
+}
+
+.swdc-card-highlight h2 {
+	color: #1e3a8a !important;
+}
+
+.swdc-card code {
+	background: #e0f0ff;
+	color: #1e40af;
+	padding: 1px 5px;
+	border-radius: 4px;
+	font-size: 12px;
+}
+
+/* ─── Stats (poslední běh) ───────────────────────── */
+.swdc-stats {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 10px;
+	margin-bottom: 18px;
+}
+
+.swdc-stats > div {
+	background: #f8fafc;
+	border: 1px solid #e2e8f0;
+	border-radius: 12px;
+	padding: 12px 14px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.swdc-stats strong {
+	font-size: 15px;
+	font-weight: 700;
+	color: #0f172a;
+}
+
+.swdc-stats span {
+	font-size: 11px;
+	color: #94a3b8;
+	text-transform: uppercase;
+	letter-spacing: .04em;
+}
+
+/* ─── Run form ───────────────────────────────────── */
+.swdc-run-form {
+	margin-bottom: 16px;
+}
+
+/* ─── Nastavení – toggle switche ─────────────────── */
+.swdc-switches,
+.swdc-options-grid {
+	display: grid;
+	gap: 2px;
+	margin-bottom: 18px;
+}
+
+.swdc-options-grid {
+	grid-template-columns: repeat(2, 1fr);
+	gap: 2px;
+}
+
+/* Přepsat WP checkboxy na toggle */
+.swdc-switches label,
+.swdc-options-grid label {
+	display: flex;
+	align-items: center;
+	gap: 12px;
+	padding: 10px 0;
+	border-bottom: 1px solid #f8fafc;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+	color: #1e293b;
+}
+
+.swdc-switches label:last-child,
+.swdc-options-grid label:last-child {
+	border-bottom: none;
+}
+
+/* Toggle track */
+.swdc-switches label input[type="checkbox"],
+.swdc-options-grid label input[type="checkbox"],
+.swdc-settings-form input[type="checkbox"] {
+	appearance: none;
+	-webkit-appearance: none;
+	position: relative;
+	width: 34px;
+	height: 20px;
+	border-radius: 999px;
+	background: #e2e8f0;
+	border: none !important;
+	outline: none;
+	cursor: pointer;
+	flex-shrink: 0;
+	transition: background .15s ease;
+	margin: 0;
+	padding: 0 !important;
+	box-shadow: none !important;
+}
+
+.swdc-switches label input[type="checkbox"]::after,
+.swdc-options-grid label input[type="checkbox"]::after,
+.swdc-settings-form input[type="checkbox"]::after {
+	content: '';
+	position: absolute;
+	top: 2px;
+	left: 2px;
+	width: 16px;
+	height: 16px;
+	border-radius: 50%;
+	background: #fff;
+	box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+	transition: transform .15s ease;
+}
+
+.swdc-switches label input[type="checkbox"]:checked,
+.swdc-options-grid label input[type="checkbox"]:checked,
+.swdc-settings-form input[type="checkbox"]:checked {
+	background: #0576b5;
+}
+
+.swdc-switches label input[type="checkbox"]:checked::after,
+.swdc-options-grid label input[type="checkbox"]:checked::after,
+.swdc-settings-form input[type="checkbox"]:checked::after {
+	transform: translateX(14px);
+}
+
+/* ─── Frequency select ───────────────────────────── */
+.swdc-field {
+	margin-bottom: 18px;
+}
+
+.swdc-field label {
+	display: block;
+	font-size: 13px;
+	font-weight: 600;
+	color: #374151;
+	margin-bottom: 6px;
+}
+
+.swdc-field select {
+	border-radius: 9px !important;
+	border-color: #e2e8f0 !important;
+	font-size: 13px;
+	height: 36px;
+	padding: 0 10px;
+}
+
+.swdc-field .description {
+	font-size: 12px;
+	color: #94a3b8;
+	margin-top: 6px;
+}
+
+/* ─── Save button ────────────────────────────────── */
+.swdc-settings-form p:last-child .button-primary,
+.swdc-settings-form > p > .button-primary,
+.swdc-settings-form .button {
+	border-radius: 4px !important;
+}
+
+.swdc-settings-form.is-readonly {
+	opacity: 0.65;
+	pointer-events: none;
+}
+
+/* ─── Logy – hlavička s tlačítkem ───────────────── */
+.swdc-card-header-inline {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	margin-bottom: 14px;
+}
+
+.swdc-card-header-inline h2 {
+	margin: 0 !important;
+}
+
+.swdc-card-header-inline .button-secondary {
+	flex-shrink: 0;
+	border-radius: 9px !important;
+	font-size: 12px !important;
+}
+
+/* ─── Accordion / details ────────────────────────── */
+.swdc-details {
+	border: 1px solid #e2e8f0;
+	border-radius: 12px;
+	margin-bottom: 8px;
+	overflow: hidden;
+}
+
+.swdc-details:last-child { margin-bottom: 0; }
+
+.swdc-details summary {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 12px;
+	padding: 12px 16px;
+	cursor: pointer;
+	font-size: 13px;
+	font-weight: 500;
+	color: #0f172a;
+	background: #f8fafc;
+	list-style: none;
+	user-select: none;
+}
+
+.swdc-details summary::-webkit-details-marker { display: none; }
+
+.swdc-details summary::after {
+	content: '›';
+	font-size: 16px;
+	color: #94a3b8;
+	transition: transform .15s ease;
+	flex-shrink: 0;
+	margin-left: auto;
+}
+
+.swdc-details[open] summary::after {
+	transform: rotate(90deg);
+}
+
+.swdc-details[open] summary {
+	border-bottom: 1px solid #e2e8f0;
+}
+
+.swdc-log-meta {
+	font-size: 12px;
+	color: #64748b;
+	font-weight: 400;
+}
+
+.swdc-details-content {
+	padding: 14px 16px;
+}
+
+/* ─── Result list ────────────────────────────────── */
+.swdc-result-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	display: grid;
+	grid-template-columns: repeat(2, 1fr);
+	gap: 6px 16px;
+}
+
+.swdc-result-list li {
+	font-size: 12px;
+	color: #64748b;
+	display: flex;
+	justify-content: space-between;
+	padding: 4px 0;
+	border-bottom: 1px solid #f1f5f9;
+}
+
+.swdc-result-list li strong {
+	color: #0f172a;
+	font-weight: 600;
+}
+
+/* ─── Full-width karta ───────────────────────────── */
+.swdc-card--full {
+	grid-column: 1 / -1;
+}
+
+/* ─── Responzivita ───────────────────────────────── */
+
+/* ─── DB stats widget ────────────────────────────── */
+.swdc-grid--db-size {
+	grid-template-columns: 1fr;
+}
+
+.swdc-card--db-stats .swdc-stats {
+	grid-template-columns: repeat(3, 1fr);
+}
+
+.swdc-trend-good {
+	color: #16a34a !important;
+}
+
+.swdc-trend-bad {
+	color: #dc2626 !important;
+}
+
+/* ─── Run actions (dvě tlačítka vedle sebe) ──────── */
+.swdc-run-actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: center;
+	margin-bottom: 16px;
+}
+
+.swdc-run-actions {
+	align-items: center;
+}
+
+.swdc-run-actions .swdc-run-form {
+	margin: 0;
+	display: flex;
+	align-items: center;
+}
+
+.swdc-run-actions .button,
+.swdc-run-actions .button-primary,
+.swdc-run-actions .button-secondary {
+	height: 32px !important;
+	line-height: 30px !important;
+	padding: 0 16px !important;
+	font-size: 13px !important;
+	margin: 0 !important;
+	display: inline-flex !important;
+	align-items: center !important;
+	vertical-align: middle !important;
+}
+
+/* ─── Dry-run výsledek ───────────────────────────── */
+.swdc-dry-run-result {
+	margin-top: 16px;
+	border: 1px solid #e2e8f0;
+	border-radius: 14px;
+	overflow: hidden;
+}
+
+.swdc-dry-summary {
+	margin: 0;
+	padding: 12px 16px;
+	font-size: 13px;
+	border-bottom: 1px solid #e2e8f0;
+}
+
+.swdc-dry-summary--has {
+	background: #fff7ed;
+	color: #92400e;
+}
+
+.swdc-dry-summary--has strong {
+	color: #b45309;
+}
+
+.swdc-dry-summary--clean {
+	background: #f0fdf4;
+	color: #166534;
+}
+
+.swdc-dry-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.swdc-dry-row {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 9px 16px;
+	font-size: 13px;
+	border-bottom: 1px solid #f8fafc;
+	gap: 12px;
+}
+
+.swdc-dry-row:last-child {
+	border-bottom: none;
+}
+
+.swdc-dry-row--has {
+	background: #fff;
+	color: #1e293b;
+}
+
+.swdc-dry-row--has strong {
+	color: #0576b5;
+	font-weight: 700;
+	min-width: 30px;
+	text-align: right;
+}
+
+.swdc-dry-row--empty {
+	background: #fafafa;
+	color: #94a3b8;
+}
+
+.swdc-dry-row--empty strong {
+	color: #cbd5e1;
+	min-width: 30px;
+	text-align: right;
+}
+
+.swdc-dry-error {
+	padding: 12px 16px;
+	margin: 0;
+	font-size: 13px;
+	color: #dc2626;
+}
+
+/* ─── Čas spuštění ───────────────────────────────── */
+.swdc-time-input,
+.swdc-field--dow select,
+.swdc-field--dom select,
+.swdc-field select#cleanup_frequency {
+	display: block;
+	margin-top: 4px;
+	border-radius: 9px !important;
+	border: 1px solid #e2e8f0 !important;
+	font-size: 13px !important;
+	height: 36px;
+	padding: 0 32px 0 12px !important;
+	width: 200px;
+	box-sizing: border-box;
+	appearance: none;
+	-webkit-appearance: none;
+	background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%2394a3b8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+	background-repeat: no-repeat;
+	background-position: right 10px center;
+	background-color: #fff;
+}
+
+.swdc-time-input {
+	padding: 0 12px !important;
+	background-image: none;
+	width: 140px;
+}
+
+@media (max-width: 960px) {
+	.swdc-hero { padding: 22px 18px 26px; }
+	.swdc-wrap { margin-right: 10px; }
+	.swdc-card--db-stats .swdc-stats { grid-template-columns: 1fr; }
+
+	.swdc-card--licence,
+	.swdc-grid { margin-left: 18px; margin-right: 18px; }
+
+	.swdc-page-notices { padding-left: 18px; padding-right: 18px; }
+
+	.swdc-grid { grid-template-columns: 1fr; }
+	.swdc-licence-grid { grid-template-columns: 1fr; }
+
+	.swdc-licence-item {
+		border-right: none;
+		border-bottom: 1px solid #f1f5f9;
+	}
+	.swdc-licence-item:last-child { border-bottom: none; }
+
+	.swdc-options-grid { grid-template-columns: 1fr; }
+	.swdc-stats { grid-template-columns: 1fr; }
+	.swdc-result-list { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 782px) {
+	.swdc-hero {
+		padding: 20px 16px 24px;
+		flex-direction: column;
+		gap: 14px;
+	}
+
+	.swdc-hero h1 { font-size: 24px !important; }
+
+	.swdc-hero__content { width: 100%; }
+
+	.swdc-hero__meta {
+		flex-direction: row !important;
+		align-items: center;
+		justify-content: space-between;
+		width: 100%;
+	}
+
+	.swdc-version-card {
+		flex: 1;
+		text-align: left;
+		min-width: 0;
+		padding: 10px 14px;
+	}
+
+	.swdc-version-card strong { font-size: 18px; }
+
+	.swdc-card--licence,
+	.swdc-grid { margin-left: 16px; margin-right: 16px; }
+
+	.swdc-page-notices { padding-left: 16px; padding-right: 16px; }
+
+	.swdc-card { padding: 18px; border-radius: 14px; }
+	.swdc-card--licence { border-radius: 14px; }
+
+	.swdc-card-head {
+		padding: 16px 18px 14px;
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 10px;
+	}
+
+	.swdc-licence-item { padding: 12px 18px; }
+	.swdc-license-form-wrap { padding: 16px 18px; }
+
+	.swdc-card-header-inline { flex-direction: column; align-items: flex-start; }
+}
+
+@media (max-width: 600px) {
+	.swdc-hero { padding: 18px 14px 20px; }
+	.swdc-hero h1 { font-size: 20px !important; }
+	.swdc-hero-brand { font-size: 10px; padding: 3px 10px; margin-bottom: 10px; }
+	.swdc-card { padding: 16px; border-radius: 12px; }
+}
