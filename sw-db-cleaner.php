@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Čištění databáze
- * Description: Bezpečné čištění WordPress databáze s logy.
- * Version: 1.0
+ * Description: Bezpečné a přehledné čištění WordPress databáze s podrobnou historií. Automaticky odstraňuje zbytečná data jako revize, transienty nebo obsah v koši a optimalizuje databázové tabulky. Pomáhá udržovat web rychlý, databázi čistou a ušetřené místo vidíte přehledně v logu každého čištění.
+ * Version: 1.1
  * Author: Smart Websites
  * Author URI: https://smart-websites.cz
  * Update URI: https://github.com/paveltravnicek/sw-db-cleaner/
@@ -42,6 +42,8 @@ final class SW_DB_Cleaner {
     const CRON_HOOK_LOG_PURGE = 'swdc_purge_old_logs';
     const NONCE_ACTION_RUN = 'swdc_run_cleanup';
     const NONCE_ACTION_SAVE = 'swdc_save_settings';
+    const NONCE_ACTION_DRY_RUN = 'swdc_dry_run';
+    const OPTION_DB_SIZE_LOG = 'swdc_db_size_log';
     const MENU_SLUG = 'sw-database-cleaner';
     const MAX_LOGS = 100;
 
@@ -67,6 +69,7 @@ final class SW_DB_Cleaner {
             add_filter('plugin_action_links_' . plugin_basename(__FILE__), [$this, 'add_plugin_action_links']);
             add_action('admin_post_swdc_verify_license', [$this, 'handle_verify_license']);
             add_action('admin_post_swdc_remove_license', [$this, 'handle_remove_license']);
+            add_action('wp_ajax_swdc_dry_run', [$this, 'handle_ajax_dry_run']);
             add_action('admin_init', [$this, 'maybe_refresh_plugin_license']);
             add_action('admin_init', [$this, 'block_direct_deactivate']);
         }
@@ -203,6 +206,9 @@ final class SW_DB_Cleaner {
             'cleanup_orphaned_commentmeta' => 0,
             'optimize_tables' => 1,
             'auto_delete_logs_30_days' => 1,
+            'cleanup_time'         => '03:00',
+            'cleanup_day_of_week'  => 1,
+            'cleanup_day_of_month'  => 1,
         ];
     }
 
@@ -242,6 +248,9 @@ final class SW_DB_Cleaner {
 
         wp_localize_script('swdc-admin', 'swdcAdmin', [
             'confirmDeleteLogs' => __('Opravdu chcete smazat všechny logy?', 'sw-db-cleaner'),
+            'ajaxUrl'           => admin_url('admin-ajax.php'),
+            'dryRunNonce'       => wp_create_nonce(self::NONCE_ACTION_DRY_RUN),
+            'analyzingText'     => __('Analyzuji…', 'sw-db-cleaner'),
         ]);
     }
 
@@ -302,6 +311,15 @@ final class SW_DB_Cleaner {
             $settings['cleanup_frequency'] = 'weekly';
         }
 
+        // Čas spuštění – input type="time" vrátí HH:MM
+        $time_raw = isset($input['cleanup_time']) ? sanitize_text_field(wp_unslash($input['cleanup_time'])) : '03:00';
+        if (!preg_match('/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/', $time_raw)) {
+            $time_raw = '03:00';
+        }
+        $settings['cleanup_time'] = $time_raw;
+        $settings['cleanup_day_of_week']  = max(1, min(7, (int) ($input['cleanup_day_of_week'] ?? 1)));
+        $settings['cleanup_day_of_month'] = max(1, min(28, (int) ($input['cleanup_day_of_month'] ?? 1)));
+
         return $settings;
     }
 
@@ -317,7 +335,36 @@ final class SW_DB_Cleaner {
         }
 
         if (!empty($settings['auto_cleanup_enabled'])) {
-            wp_schedule_event(time() + 5 * MINUTE_IN_SECONDS, $settings['cleanup_frequency'], self::CRON_HOOK);
+            // Rozparsovat čas
+            $time_parts = explode(':', (string) ($settings['cleanup_time'] ?? '03:00'));
+            $hour   = (int) ($time_parts[0] ?? 3);
+            $minute = (int) ($time_parts[1] ?? 0);
+            $now    = current_time('timestamp');
+            $freq   = $settings['cleanup_frequency'];
+
+            if ($freq === 'weekly') {
+                // Najít nejbližší požadovaný den v týdnu (1=Po, 7=Ne)
+                $target_dow = (int) ($settings['cleanup_day_of_week'] ?? 1);
+                $current_dow = (int) date('N', $now); // 1=Po, 7=Ne
+                $days_ahead = ($target_dow - $current_dow + 7) % 7;
+                $next = mktime($hour, $minute, 0, (int) date('n', $now), (int) date('j', $now) + $days_ahead, (int) date('Y', $now));
+                if ($next <= $now) {
+                    $next = strtotime('+7 days', $next);
+                }
+            } elseif ($freq === 'monthly') {
+                $target_dom = (int) ($settings['cleanup_day_of_month'] ?? 1);
+                $next = mktime($hour, $minute, 0, (int) date('n', $now), $target_dom, (int) date('Y', $now));
+                if ($next <= $now) {
+                    $next = mktime($hour, $minute, 0, (int) date('n', $now) + 1, $target_dom, (int) date('Y', $now));
+                }
+            } else {
+                // daily
+                $next = mktime($hour, $minute, 0, (int) date('n', $now), (int) date('j', $now), (int) date('Y', $now));
+                if ($next <= $now) {
+                    $next = strtotime('+1 day', $next);
+                }
+            }
+            wp_schedule_event($next, $freq, self::CRON_HOOK);
         }
     }
 
@@ -506,8 +553,107 @@ final class SW_DB_Cleaner {
 
         update_option(self::OPTION_LAST_RUN, $results, false);
         $this->add_log($results);
+        $this->log_db_size($size_after);
 
         return $results;
+    }
+
+    private function dry_run(): array {
+        global $wpdb;
+        $settings = $this->get_settings();
+        $counts = [
+            'revisions'                      => 0,
+            'auto_drafts'                    => 0,
+            'trashed_posts'                  => 0,
+            'expired_transients'             => 0,
+            'orphaned_transients'            => 0,
+            'spam_comments'                  => 0,
+            'trashed_comments'               => 0,
+            'orphaned_postmeta'              => 0,
+            'orphaned_commentmeta'           => 0,
+        ];
+
+        if (!empty($settings['cleanup_revisions'])) {
+            $counts['revisions'] = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'revision'");
+        }
+        if (!empty($settings['cleanup_auto_drafts'])) {
+            $counts['auto_drafts'] = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_status = 'auto-draft'");
+        }
+        if (!empty($settings['cleanup_trashed_posts'])) {
+            $counts['trashed_posts'] = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_status = 'trash'");
+        }
+        if (!empty($settings['cleanup_expired_transients'])) {
+            $counts['expired_transients'] = (int) $wpdb->get_var(
+                "SELECT COUNT(*) FROM {$wpdb->options}
+                 WHERE option_name LIKE '_transient_timeout_%'
+                 AND option_value < UNIX_TIMESTAMP()"
+            );
+        }
+        if (!empty($settings['cleanup_orphaned_transients'])) {
+            $counts['orphaned_transients'] = (int) $wpdb->get_var(
+                "SELECT COUNT(*) FROM {$wpdb->options} o
+                 LEFT JOIN {$wpdb->options} t
+                 ON t.option_name = REPLACE(o.option_name, '_transient_', '_transient_timeout_')
+                 WHERE o.option_name LIKE '_transient_%'
+                 AND o.option_name NOT LIKE '_transient_timeout_%'
+                 AND t.option_id IS NULL"
+            );
+        }
+        if (!empty($settings['cleanup_spam_comments'])) {
+            $counts['spam_comments'] = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->comments} WHERE comment_approved = 'spam'");
+        }
+        if (!empty($settings['cleanup_trashed_comments'])) {
+            $counts['trashed_comments'] = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->comments} WHERE comment_approved = 'trash'");
+        }
+        if (!empty($settings['cleanup_orphaned_postmeta'])) {
+            $counts['orphaned_postmeta'] = (int) $wpdb->get_var(
+                "SELECT COUNT(*) FROM {$wpdb->postmeta} pm
+                 LEFT JOIN {$wpdb->posts} p ON pm.post_id = p.ID
+                 WHERE p.ID IS NULL"
+            );
+        }
+        if (!empty($settings['cleanup_orphaned_commentmeta'])) {
+            $counts['orphaned_commentmeta'] = (int) $wpdb->get_var(
+                "SELECT COUNT(*) FROM {$wpdb->commentmeta} cm
+                 LEFT JOIN {$wpdb->comments} c ON cm.comment_id = c.comment_ID
+                 WHERE c.comment_ID IS NULL"
+            );
+        }
+
+        $tables = $this->get_wp_tables();
+        $size_mb = $this->get_db_size_mb($tables);
+
+        return [
+            'counts'  => $counts,
+            'size_mb' => round($size_mb, 2),
+            'total'   => array_sum($counts),
+        ];
+    }
+
+    public function handle_ajax_dry_run() {
+        check_ajax_referer(self::NONCE_ACTION_DRY_RUN, 'nonce');
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error('forbidden');
+        }
+        if (!$this->plugin_is_operational()) {
+            wp_send_json_error('license');
+        }
+        wp_send_json_success($this->dry_run());
+    }
+
+    private function log_db_size(float $size_mb): void {
+        $log = $this->get_db_size_log();
+        $log[] = ['ts' => time(), 'mb' => round($size_mb, 3)];
+        // Uchovávat max 90 záznamů (cca 3 měsíce při týdenním čištění)
+        if (count($log) > 90) {
+            $log = array_slice($log, -90);
+        }
+        update_option(self::OPTION_DB_SIZE_LOG, $log, false);
+    }
+
+    private function get_db_size_log(): array {
+        $log = get_option(self::OPTION_DB_SIZE_LOG, []);
+        return is_array($log) ? $log : [];
     }
 
     private function add_log($results) {
@@ -531,7 +677,7 @@ final class SW_DB_Cleaner {
         $map = [
             'daily' => 'Denně',
             'weekly' => 'Týdně',
-            'monthly' => 'Jednou za 30 dní',
+            'monthly' => 'Jednou měsíčně',
         ];
         return $map[$frequency] ?? $frequency;
     }
@@ -784,16 +930,20 @@ final class SW_DB_Cleaner {
         ?>
         <div class="wrap swdc-wrap">
             <section class="swdc-hero">
-                <div class="swdc-hero-inner">
-                    <div>
-                        <span class="swdc-hero-brand">Smart Websites</span>
-                        <h1>Čištění databáze</h1>
-                        <p>Bezpečné čištění WordPress databáze s logy.</p>
-                    </div>
+                <div class="swdc-hero__content">
+                    <span class="swdc-hero-brand">Smart Websites</span>
+                    <h1>Čištění databáze</h1>
+                    <p>Bezpečné a přehledné čištění WordPress databáze s podrobnou historií. Automaticky odstraňuje zbytečná data jako revize, transienty nebo obsah v koši a optimalizuje databázové tabulky. Pomáhá udržovat web rychlý, databázi čistou a ušetřené místo vidíte přehledně v logu každého čištění.</p>
+                </div>
+                <div class="swdc-hero__meta">
                     <div class="swdc-version-card" aria-label="Verze pluginu">
                         <strong><?php echo esc_html($plugin_version); ?></strong>
                         <span>Verze pluginu</span>
                     </div>
+                    <span class="swdc-hero-status swdc-hero-status--<?php echo $is_operational ? 'active' : 'inactive'; ?>">
+                        <span class="swdc-hero-status__dot"></span>
+                        <?php echo $is_operational ? esc_html__('Platná licence', 'sw-db-cleaner') : esc_html__('Licence chybí', 'sw-db-cleaner'); ?>
+                    </span>
                 </div>
             </section>
 
@@ -817,6 +967,9 @@ final class SW_DB_Cleaner {
                     ?>
                 </p></div>
             <?php endif; ?>
+                <?php if (!$can_edit_settings) : ?>
+                    <div class="notice notice-warning"><p><?php echo esc_html__('Plugin momentálně nemá platnou licenci. Nastavení zůstává pouze pro čtení a čištění databáze se neprovádí.', 'sw-db-cleaner'); ?></p></div>
+                <?php endif; ?>
             </div>
 
             <div class="swdc-card swdc-card--licence">
@@ -867,14 +1020,53 @@ final class SW_DB_Cleaner {
                 <?php endif; ?>
             </div>
 
-            <?php if (!$can_edit_settings) : ?>
-                <div class="notice notice-warning"><p><?php echo esc_html__('Plugin momentálně nemá platnou licenci. Nastavení zůstává pouze pro čtení a čištění databáze se neprovádí.', 'sw-db-cleaner'); ?></p></div>
-            <?php endif; ?>
+            <?php
+            $db_size_log = $this->get_db_size_log();
+            $current_size_mb = round($this->get_db_size_mb($this->get_wp_tables()), 2);
+            $total_saved_mb  = 0;
+            $logs_all = $this->get_logs();
+            foreach ($logs_all as $l) { $total_saved_mb += (float) ($l['saved_mb'] ?? 0); }
+            $size_30d_ago = null;
+            $threshold = time() - (30 * DAY_IN_SECONDS);
+            foreach (array_reverse($db_size_log) as $entry) {
+                if (!empty($entry['ts']) && $entry['ts'] <= $threshold) {
+                    $size_30d_ago = (float) $entry['mb'];
+                    break;
+                }
+            }
+            $trend_mb   = $size_30d_ago !== null ? round($current_size_mb - $size_30d_ago, 2) : null;
+            ?>
+            <div class="swdc-grid swdc-grid--db-size">
+                <section class="swdc-card swdc-card--db-stats">
+                    <h2><?php esc_html_e('Stav databáze', 'sw-db-cleaner'); ?></h2>
+                    <div class="swdc-stats">
+                        <div>
+                            <strong><?php echo esc_html(number_format_i18n($current_size_mb, 2)); ?> MB</strong>
+                            <span>Aktuální velikost</span>
+                        </div>
+                        <div>
+                            <?php if ($trend_mb !== null) : ?>
+                                <strong class="<?php echo $trend_mb <= 0 ? 'swdc-trend-good' : 'swdc-trend-bad'; ?>">
+                                    <?php echo ($trend_mb > 0 ? '+' : '') . esc_html(number_format_i18n($trend_mb, 2)); ?> MB
+                                </strong>
+                                <span>Změna za 30 dní</span>
+                            <?php else : ?>
+                                <strong>—</strong>
+                                <span>Změna za 30 dní</span>
+                            <?php endif; ?>
+                        </div>
+                        <div>
+                            <strong><?php echo esc_html(number_format_i18n(round($total_saved_mb, 2), 2)); ?> MB</strong>
+                            <span>Celkem ušetřeno</span>
+                        </div>
+                    </div>
+                </section>
+            </div>
 
             <div class="swdc-grid">
                 <section class="swdc-card swdc-card-highlight">
                     <h2>Doporučené výchozí nastavení</h2>
-                    <p>Pro většinu běžných webů je bezpečné nechat zapnuté revize, auto-drafty, obsah v koši, transienty, spam komentáře a optimalizaci tabulek. Osiřelé <code>postmeta</code> a <code>commentmeta</code> doporučuji zapínat jen tehdy, pokud víš, že na webu nezlobí některý plugin nebo po něm zůstává nepořádek.</p>
+                    <p>Pro většinu běžných webů doporučujeme nechat zapnuté revize, auto-drafty, obsah v koši, transienty, spam komentáře a optimalizaci tabulek. Osiřelé <code>postmeta</code> a <code>commentmeta</code> zapínejte jen tehdy, pokud víte, že na webu nedojde ke konfliktu s některým jiným pluginem.</p>
                 </section>
 
                 <section class="swdc-card">
@@ -889,10 +1081,14 @@ final class SW_DB_Cleaner {
                         <p>Zatím neproběhlo žádné čištění.</p>
                     <?php endif; ?>
 
-                    <form method="post" class="swdc-run-form">
-                        <?php wp_nonce_field(self::NONCE_ACTION_RUN); ?>
-                        <button type="submit" name="swdc_run_cleanup" class="button button-primary button-hero" <?php disabled(!$can_edit_settings); ?>>Spustit čištění databáze nyní</button>
-                    </form>
+                    <div class="swdc-run-actions">
+                        <form method="post" class="swdc-run-form">
+                            <?php wp_nonce_field(self::NONCE_ACTION_RUN); ?>
+                            <button type="submit" name="swdc_run_cleanup" class="button button-primary" <?php disabled(!$can_edit_settings); ?>>Spustit čištění databáze</button>
+                        </form>
+                        <button type="button" id="swdc-dry-run-btn" class="button button-secondary" <?php disabled(!$can_edit_settings); ?>>Analyzovat databázi</button>
+                    </div>
+                    <div id="swdc-dry-run-result" class="swdc-dry-run-result" style="display:none"></div>
 
                     <?php if (!empty($admin_result)) : ?>
                         <?php $counts = $admin_result['counts']; ?>
@@ -918,7 +1114,7 @@ final class SW_DB_Cleaner {
                 </section>
             </div>
 
-            <div class="swdc-grid swdc-grid-main">
+            <div class="swdc-grid swdc-grid-main" style="margin-top:16px">
                 <section class="swdc-card">
                     <h2>Nastavení čištění</h2>
                     <form method="post" class="swdc-settings-form <?php echo $can_edit_settings ? '' : 'is-readonly'; ?>">
@@ -935,9 +1131,37 @@ final class SW_DB_Cleaner {
                             <select name="cleanup_frequency" id="cleanup_frequency">
                                 <option value="daily" <?php selected($settings['cleanup_frequency'], 'daily'); ?>>Denně</option>
                                 <option value="weekly" <?php selected($settings['cleanup_frequency'], 'weekly'); ?>>Týdně</option>
-                                <option value="monthly" <?php selected($settings['cleanup_frequency'], 'monthly'); ?>>Jednou za 30 dní</option>
+                                <option value="monthly" <?php selected($settings['cleanup_frequency'], 'monthly'); ?>>Jednou měsíčně</option>
                             </select>
-                            <p class="description">Aktuálně: <?php echo esc_html($this->get_frequency_label($settings['cleanup_frequency'])); ?></p>
+                        </div>
+                        <div class="swdc-field swdc-field--time" id="swdc-time-field">
+                            <label><strong>Čas spuštění</strong></label>
+                            <input type="time" name="cleanup_time" id="cleanup_time"
+                                   value="<?php echo esc_attr($settings['cleanup_time'] ?? '03:00'); ?>"
+                                   class="swdc-time-input" />
+                            <p class="description"><?php esc_html_e('Čištění se spustí v nejbližší tento čas (dle časového pásma WordPressu).', 'sw-db-cleaner'); ?></p>
+                        </div>
+
+                        <div class="swdc-field swdc-field--dow" id="swdc-dow-field" style="display:none">
+                            <label for="cleanup_day_of_week"><strong>Den v týdnu</strong></label>
+                            <select name="cleanup_day_of_week" id="cleanup_day_of_week">
+                                <?php
+                                $days_of_week = [1=>'Pondělí',2=>'Úterý',3=>'Středa',4=>'Čtvrtek',5=>'Pátek',6=>'Sobota',7=>'Neděle'];
+                                foreach ($days_of_week as $num => $name) :
+                                ?>
+                                    <option value="<?php echo $num; ?>" <?php selected((int)($settings['cleanup_day_of_week'] ?? 1), $num); ?>><?php echo esc_html($name); ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+
+                        <div class="swdc-field swdc-field--dom" id="swdc-dom-field" style="display:none">
+                            <label for="cleanup_day_of_month"><strong>Den v měsíci</strong></label>
+                            <select name="cleanup_day_of_month" id="cleanup_day_of_month">
+                                <?php for ($d = 1; $d <= 28; $d++) : ?>
+                                    <option value="<?php echo $d; ?>" <?php selected((int)($settings['cleanup_day_of_month'] ?? 1), $d); ?>><?php echo $d . '.'; ?></option>
+                                <?php endfor; ?>
+                            </select>
+                            <p class="description"><?php esc_html_e('Maximum 28. den — zaručuje spuštění v každém měsíci.', 'sw-db-cleaner'); ?></p>
                         </div>
 
                         <div class="swdc-options-grid">
