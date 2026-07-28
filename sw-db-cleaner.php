@@ -2,7 +2,7 @@
 /**
  * Plugin Name: Čištění databáze
  * Description: Bezpečné a přehledné čištění WordPress databáze s podrobnou historií. Automaticky odstraňuje zbytečná data jako revize, transienty nebo obsah v koši a optimalizuje databázové tabulky. Pomáhá udržovat web rychlý, databázi čistou a ušetřené místo vidíte přehledně v logu každého čištění.
- * Version: 1.1
+ * Version: 1.2
  * Author: Smart Websites
  * Author URI: https://smart-websites.cz
  * Update URI: https://github.com/paveltravnicek/sw-db-cleaner/
@@ -33,7 +33,7 @@ final class SW_DB_Cleaner {
     const VERSION = '1.0';
     const LICENSE_OPTION = 'swdc_license';
     const LICENSE_CRON_HOOK = 'swdc_license_daily_check';
-    const HUB_BASE = 'https://smart-websites.cz';
+    const HUB_BASE = 'https://agent.smart-websites.cz';
     const PLUGIN_SLUG = 'sw-db-cleaner';
     const OPTION_SETTINGS = 'swdc_settings';
     const OPTION_LAST_RUN = 'swdc_last_run';
@@ -824,7 +824,7 @@ final class SW_DB_Cleaner {
             'plugin_version' => self::VERSION,
         ];
 
-        $res = wp_remote_post(rtrim(self::HUB_BASE, '/') . '/wp-json/swlic/v2/plugin-license', [
+        $res = wp_remote_post(rtrim(self::HUB_BASE, '/') . '/index.php?api=swlic/v2/plugin-license', [
             'timeout' => 20,
             'headers' => ['Content-Type' => 'application/json'],
             'body' => wp_json_encode($payload, JSON_UNESCAPED_SLASHES),
